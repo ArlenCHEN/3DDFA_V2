@@ -72,7 +72,6 @@ def calc_pose(param):
 
     return P, pose
 
-
 def build_camera_box(rear_size=90):
     point_3d = []
     rear_depth = 0
@@ -127,6 +126,9 @@ def plot_pose_box(img, P, ver, color=(40, 255, 0), line_width=2):
 def viz_pose(img, param_lst, ver_lst, show_flag=False, wfp=None):
     for param, ver in zip(param_lst, ver_lst):
         P, pose = calc_pose(param)
+        print('In pose.py, P: ', P)
+        print('In pose.py, pose: ', pose)
+        
         img = plot_pose_box(img, P, ver)
         # print(P[:, :3])
         print(f'yaw: {pose[0]:.1f}, pitch: {pose[1]:.1f}, roll: {pose[2]:.1f}')
@@ -139,3 +141,11 @@ def viz_pose(img, param_lst, ver_lst, show_flag=False, wfp=None):
         plot_image(img)
 
     return img
+
+def viz_pose_1(img, param_lst, ver_lst, show_flag=False, wfp=None):
+    for param, ver in zip(param_lst, ver_lst):
+        P, pose = calc_pose(param)
+        # print(P[:, :3])
+        print(f'yaw: {pose[0]:.1f}, pitch: {pose[1]:.1f}, roll: {pose[2]:.1f}')
+
+    return P, pose

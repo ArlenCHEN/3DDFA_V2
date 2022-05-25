@@ -61,6 +61,8 @@ def main(args):
 
     ver_lst = tddfa.recon_vers(param_lst, roi_box_lst, dense_flag=dense_flag)
 
+    print('In demo, ver_lst: ', ver_lst[0].shape)
+
     if args.opt == '2d_sparse':
         draw_landmarks(img, ver_lst, show_flag=args.show_flag, dense_flag=dense_flag, wfp=wfp)
     elif args.opt == '2d_dense':

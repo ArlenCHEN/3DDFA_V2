@@ -15,6 +15,7 @@ from .tddfa_util import _to_ctype
 
 
 def depth(img, ver_lst, tri, show_flag=False, wfp=None, with_bg_flag=True):
+    print('In depth, img shape: ', img.shape)
     if with_bg_flag:
         overlap = img.copy()
     else:
@@ -22,7 +23,6 @@ def depth(img, ver_lst, tri, show_flag=False, wfp=None, with_bg_flag=True):
 
     for ver_ in ver_lst:
         ver = _to_ctype(ver_.T)  # transpose
-
         z = ver[:, 2]
         z_min, z_max = min(z), max(z)
 
@@ -30,6 +30,9 @@ def depth(img, ver_lst, tri, show_flag=False, wfp=None, with_bg_flag=True):
 
         # expand
         z = np.repeat(z[:, np.newaxis], 3, axis=1)
+        print('In depth, tri shape: ', tri.shape)
+        print('In depth, ver shape: ', ver.shape)
+        print('In depth, z shape: ', z.shape)
 
         overlap = rasterize(ver, tri, z, bg=overlap)
 
