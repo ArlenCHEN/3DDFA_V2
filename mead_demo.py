@@ -24,6 +24,8 @@ from utils.serialization import ser_to_ply, ser_to_obj
 from utils.functions import draw_landmarks, get_suffix
 from utils.tddfa_util import str2bool
 
+from tqdm import tqdm
+
 is_debug = False
 
 def detect_attributes(img, args):
@@ -74,8 +76,9 @@ def detect_face(img, landmark_raw):
     Crop face area according to the detected landmarks
     """
     # This size must ensure the face part is not missing, otherwise, the landmark detection will generate negative coordinates
-    img_size = 1000 # Hyperparam
-    
+    # img_size = 1000 # Hyperparam 1000 for video_001
+    v_size = 700
+    u_size = 700
     if is_debug:
         print('In detect_face, shape of input img: ', img.shape)
 
@@ -88,13 +91,26 @@ def detect_face(img, landmark_raw):
 
     middle_u = int((u_max+u_min)/2)
     middle_v = int((v_max+v_min)/2)
+
+    print('original image shape: ', img.shape)
+
+    new_v_min = middle_v - int(v_size/2)
+    new_v_max = new_v_min + v_size
+    assert new_v_max < img.shape[0], 'new_v_max exceeds the boundary'
     
-    new_u_max = middle_u + int(img_size/2)
-    new_u_min = middle_u - int(img_size/2)
-    new_v_max = middle_v + int(img_size/2)
-    new_v_min = middle_v - int(img_size/2)
-    
+    new_u_min = middle_u - int(u_size/2)
+    new_u_max = new_u_min + u_size
+    print(new_u_min, new_u_max)
+    assert new_u_max < img.shape[1], 'new_u_max exceeds the boundary'
+
+    if new_u_max < 0 or new_u_min < 0 or new_v_max < 0 or new_v_min < 0:
+        print('Index: ', new_u_max, new_u_min, new_v_max, new_v_min)
+        raise RuntimeError('Index is negative!')
+
     new_img = img[new_v_min:new_v_max, new_u_min:new_u_max, :]
+    print('In detect_face, output shape: ', new_img.shape)
+    # input()
+
     return new_img
     
 def split_face(landmark_raw):
@@ -130,21 +146,13 @@ def split_face(landmark_raw):
     if is_debug:
         print('Right part: ', right)
 
-    # left_u_max = int(np.max(left[:, 0]))
-    # left_u_min = int(np.min(left[:, 0]))
-    # left_v_max = int(np.max(left[:, 1]))
-    # left_v_min = int(np.min(left[:, 1]))
-
-    right_u_max = int(np.max(left[:, 0]))
+    # Right part if the image itself = Left part of the third-person view
+    right_u_max = int(np.max(left[:, 0])) 
     right_u_min = int(np.min(left[:, 0]))
     right_v_max = int(np.max(left[:, 1]))
     right_v_min = int(np.min(left[:, 1]))
 
-    # right_u_max = int(np.max(right[:, 0]))
-    # right_u_min = int(np.min(right[:, 0]))
-    # right_v_max = int(np.max(right[:, 1]))
-    # right_v_min = int(np.min(right[:, 1]))
-
+    # Left part if the image itself = Right part of the third-person view
     left_u_max = int(np.max(right[:, 0]))
     left_u_min = int(np.min(right[:, 0]))
     left_v_max = int(np.max(right[:, 1]))
@@ -177,10 +185,6 @@ def split_face(landmark_raw):
     right_coords = [right_v_max, right_v_min, right_u_max, right_u_min]
     mouth_coords = [mouth_v_max, mouth_v_min, mouth_u_max, mouth_u_min]
 
-    # left_coords = [left_u_max, left_u_min, left_v_max, left_v_min]
-    # right_coords = [right_u_max, right_u_min, right_v_max, right_v_min]
-    # mouth_coords = [mouth_u_max, mouth_u_min, mouth_v_max, mouth_v_min]
-
     split_data = {
         'left_coords':left_coords,
         'right_coords':right_coords,
@@ -189,7 +193,7 @@ def split_face(landmark_raw):
     return split_data
 
 def main(args):
-    video_dir_list = ['video_1'] # Which video folder we are working on
+    video_dir_list = ['video_001'] # Which video folder we are working on
 
     # How many target frames we want to capture for each ref frame
     temporal_num = 3 # Hyperparam
@@ -229,7 +233,9 @@ def main(args):
                     total_len_frames = len(frames)
                     assert total_len_frames >= temporal_num+1, 'Frames are not enough to extract temporal ones!' # Check if the number of total frames is large than the number of temporal frames
 
-                    for frame in frames:
+                    # for frame in frames:
+                    for i, frame in tqdm(enumerate(frames)):
+                        # frame = frames[i]
                         ref_frame_path = os.path.join(frame_dir, frame) # Reference image
                         ref_img = cv2.imread(ref_frame_path)
                         ref_img_2d_landmarks = detect_attributes(ref_img, args) # 2D landmarks of the reference image
@@ -266,6 +272,16 @@ def main(args):
                             print('Save ref images to ...', ref_save_path)
                             os.makedirs(target_save_path)
                         cv2.imwrite(ref_save_path, new_ref_img)
+                        
+                        delta = 30 # Hyperparam. Margin to crop the local area
+                        
+                        # Copy the original reference image
+                        overlaid_img = deepcopy(new_ref_img)
+                        mask = -1*np.ones((overlaid_img.shape[0], overlaid_img.shape[1]))
+
+                        overlaid_img_1 = deepcopy(new_ref_img)
+                        overlaid_img_2 = deepcopy(new_ref_img)
+                        overlaid_img_3 = deepcopy(new_ref_img)
 
                         for target in str_temporal_num_list: # Loop over the next few target frames
                             target_frame_number = ref_frame_num + int(target)*frame_interval # Compute the target frame number
@@ -279,6 +295,64 @@ def main(args):
                             assert not np.any(target_gt_img_2d_landmarks<0), 'target_gt_img_2d_landmarks have negative values!'
 
                             new_target_gt_img = detect_face(target_gt_img, target_gt_img_2d_landmarks) # Newly generated target gt image
+                            new_target_gt_img_gray = cv2.cvtColor(new_target_gt_img, cv2.COLOR_RGB2GRAY)
+                            new_target_gt_2d_landmarks = detect_attributes(new_target_gt_img, args)
+
+                            target_gt_split_data = split_face(new_target_gt_2d_landmarks)
+                            target_gt_left_coords = target_gt_split_data['left_coords']
+                            target_gt_right_coords = target_gt_split_data['right_coords']
+                            target_gt_mouth_coords = target_gt_split_data['mouth_coords']
+
+                            # Extract the left part of the target gt image
+                            target_left_rgb = new_target_gt_img[target_gt_left_coords[1]-delta:target_gt_left_coords[0]+delta, target_gt_left_coords[3]-delta:target_gt_left_coords[2]+delta]
+                            target_left_gray = new_target_gt_img_gray[target_gt_left_coords[1]-delta:target_gt_left_coords[0]+delta, target_gt_left_coords[3]-delta:target_gt_left_coords[2]+delta]
+
+                            target_left_v_range = target_left_rgb.shape[0]
+                            target_left_u_range = target_left_rgb.shape[1]
+
+                            target_left_v_min = ref_left_v_mean - int(target_left_v_range/2)
+                            target_left_v_max = target_left_v_min + target_left_v_range
+                            target_left_u_min = ref_left_u_mean - int(target_left_u_range/2)
+                            target_left_u_max = target_left_u_min + target_left_u_range
+
+                            repeat_target_left_gray = np.repeat(target_left_gray[:,:,np.newaxis], 3, axis=2)
+
+                            overlaid_img_2[target_left_v_min:target_left_v_max, target_left_u_min:target_left_u_max, :] = repeat_target_left_gray
+                            overlaid_img_3[target_left_v_min:target_left_v_max, target_left_u_min:target_left_u_max, :] = target_left_rgb
+
+                            # Extract the right part of the target gt image
+                            target_right_rgb = new_target_gt_img[target_gt_right_coords[1]-delta:target_gt_right_coords[0]+delta, target_gt_right_coords[3]-delta:target_gt_right_coords[2]+delta]
+                            target_right_gray = new_target_gt_img_gray[target_gt_right_coords[1]-delta:target_gt_right_coords[0]+delta, target_gt_right_coords[3]-delta:target_gt_right_coords[2]+delta]
+
+                            target_right_v_range = target_right_rgb.shape[0]
+                            target_right_u_range = target_right_rgb.shape[1]
+
+                            target_right_v_min = ref_right_v_mean - int(target_right_v_range/2)
+                            target_right_v_max = target_right_v_min + target_right_v_range
+                            target_right_u_min = ref_right_u_mean - int(target_right_u_range/2)
+                            target_right_u_max = target_right_u_min + target_right_u_range
+
+                            repeat_target_right_gray = np.repeat(target_right_gray[:,:,np.newaxis], 3, axis=2)
+
+                            overlaid_img_2[target_right_v_min:target_right_v_max, target_right_u_min:target_right_u_max, :] = repeat_target_right_gray
+                            overlaid_img_3[target_right_v_min:target_right_v_max, target_right_u_min:target_right_u_max, :] = target_right_rgb
+
+                            # Extract the mouth part of the target gt image
+                            target_mouth_rgb = new_target_gt_img[target_gt_mouth_coords[1]-delta:target_gt_mouth_coords[0]+delta, target_gt_mouth_coords[3]-delta:target_gt_mouth_coords[2]+delta]
+                            target_mouth_gray = new_target_gt_img_gray[target_gt_mouth_coords[1]-delta:target_gt_mouth_coords[0]+delta, target_gt_mouth_coords[3]-delta:target_gt_mouth_coords[2]+delta]
+
+                            target_mouth_v_range = target_mouth_rgb.shape[0]
+                            target_mouth_u_range = target_mouth_rgb.shape[1]
+
+                            target_mouth_v_min = ref_mouth_v_mean - int(target_mouth_v_range/2)
+                            target_mouth_v_max = target_mouth_v_min + target_mouth_v_range
+                            target_mouth_u_min = ref_mouth_u_mean - int(target_mouth_u_range/2)
+                            target_mouth_u_max = target_mouth_u_min + target_mouth_u_range
+
+                            repeat_target_mouth_gray = np.repeat(target_mouth_gray[:,:,np.newaxis], 3, axis=2)
+
+                            overlaid_img_2[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = repeat_target_mouth_gray
+                            overlaid_img_3[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = target_mouth_rgb
 
                             target_individual_save_path = os.path.join(target_save_path, target)
                             if not os.path.exists(target_individual_save_path): # Create a target individual folder if the folder does not exist
@@ -311,10 +385,9 @@ def main(args):
                             # Left eye of left angle image
                             left_coords = left_split_data['left_coords']
 
-                            delta = 30 # Hyperparam. Margin to crop the local area
-
                             # Add the margin when crop the local attribute
                             left_left = new_target_left_img_gray[left_coords[1]-delta:left_coords[0]+delta, left_coords[3]-delta:left_coords[2]+delta]
+                            left_left_rgb = new_target_left_img[left_coords[1]-delta:left_coords[0]+delta, left_coords[3]-delta:left_coords[2]+delta]
 
                             left_v_range = left_left.shape[0]
                             left_u_range = left_left.shape[1]
@@ -326,12 +399,12 @@ def main(args):
                             left_u_min = ref_left_u_mean - int(left_u_range/2)
                             left_u_max = left_u_min + left_u_range
 
-                            # Copy the original reference image
-                            overlaid_img = deepcopy(new_ref_img)
-                            
                             repeat_left_left = np.repeat(left_left[:,:,np.newaxis], 3, axis=2)
                             # Replace the left eye
                             overlaid_img[left_v_min:left_v_max, left_u_min:left_u_max, :] = repeat_left_left
+                            mask[left_v_min:left_v_max, left_u_min:left_u_max] = 1
+
+                            overlaid_img_1[left_v_min:left_v_max, left_u_min:left_u_max, :] = left_left_rgb
 
                             # Extract right target image
                             right_video_path_parent = os.path.join(args.video_root_path, video_dir, right_angle, exp, level)
@@ -357,7 +430,8 @@ def main(args):
 
                             # Right eye of right angle image
                             right_right = new_target_right_img_gray[right_coords[1]-delta:right_coords[0]+delta, right_coords[3]-delta:right_coords[2]+delta]
-                        
+                            right_right_rgb = new_target_right_img[right_coords[1]-delta:right_coords[0]+delta, right_coords[3]-delta:right_coords[2]+delta]
+
                             right_v_range, right_u_range = right_right.shape
                             right_v_min = ref_right_v_mean - int(right_v_range/2)
                             right_v_max = right_v_min + right_v_range
@@ -367,6 +441,9 @@ def main(args):
                             repeat_right_right = np.repeat(right_right[:,:,np.newaxis], 3, axis=2)
                             # Replace the right eye
                             overlaid_img[right_v_min:right_v_max, right_u_min:right_u_max, :] = repeat_right_right
+                            mask[right_v_min:right_v_max, right_u_min:right_u_max] = 1
+
+                            overlaid_img_1[right_v_min:right_v_max, right_u_min:right_u_max, :] = right_right_rgb
 
                             # Extract top target image
                             top_video_path_parent = os.path.join(args.video_root_path, video_dir, top_angle, exp, level)
@@ -389,6 +466,7 @@ def main(args):
                             top_split_data = split_face(new_top_2d_landmarks) 
                             mouth_coords = top_split_data['mouth_coords']
                             top_mouth = new_target_top_img_gray[mouth_coords[1]-delta:mouth_coords[0]+delta, mouth_coords[3]-delta:mouth_coords[2]+delta]
+                            top_mouth_rgb = new_target_top_img[mouth_coords[1]-delta:mouth_coords[0]+delta, mouth_coords[3]-delta:mouth_coords[2]+delta]
 
                             mouth_v_range, mouth_u_range = top_mouth.shape
                             mouth_v_min = ref_mouth_v_mean - int(mouth_v_range/2)
@@ -399,9 +477,25 @@ def main(args):
                             repeat_top_mouth = np.repeat(top_mouth[:,:,np.newaxis], 3, axis=2)
 
                             # Replace the mouth
-                            overlaid_img[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = repeat_top_mouth
+                            overlaid_img[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max, :] = repeat_top_mouth
+                            mask[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 1
+
+                            overlaid_img_1[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = top_mouth_rgb
+
                             overlaid_save_path = os.path.join(target_individual_save_path, 'overlaid.jpg')
+                            mask_save_path = os.path.join(target_individual_save_path, 'mask.npy')
+                            overlaid_save_path_1 = os.path.join(target_individual_save_path, 'overlaid_1.jpg')
+                            overlaid_save_path_2 = os.path.join(target_individual_save_path, 'overlaid_2.jpg')
+                            overlaid_save_path_3 = os.path.join(target_individual_save_path, 'overlaid_3.jpg')
+                            
+                            print('Save path: ', overlaid_save_path)
+
                             cv2.imwrite(overlaid_save_path, overlaid_img)
+                            np.save(mask_save_path, mask)
+                            cv2.imwrite(overlaid_save_path_1, overlaid_img_1)
+                            cv2.imwrite(overlaid_save_path_2, overlaid_img_2)
+                            cv2.imwrite(overlaid_save_path_3, overlaid_img_3)
+                            
                         print('Finish one ref frame')
                         input()
 
