@@ -25,6 +25,7 @@ from utils.functions import draw_landmarks, get_suffix
 from utils.tddfa_util import str2bool
 
 from tqdm import tqdm
+from PIL import Image
 
 is_debug = False
 
@@ -111,6 +112,7 @@ def detect_face(img, landmark_raw):
     print('In detect_face, output shape: ', new_img.shape)
     # input()
 
+    new_img = img[:,420:1500,:]
     return new_img
     
 def split_face(landmark_raw):
@@ -283,6 +285,12 @@ def main(args):
                         overlaid_img_2 = deepcopy(new_ref_img)
                         overlaid_img_3 = deepcopy(new_ref_img)
 
+                        is_partial_data = True
+                        if is_partial_data:
+                            overlaid_img_4 = deepcopy(new_ref_img)
+                            overlaid_img_5 = deepcopy(new_ref_img)
+                            mask_4 = -1*np.ones((overlaid_img.shape[0], overlaid_img.shape[1]))
+
                         for target in str_temporal_num_list: # Loop over the next few target frames
                             target_frame_number = ref_frame_num + int(target)*frame_interval # Compute the target frame number
                             target_frame_str = str(target_frame_number).zfill(3) + img_suffix # Obtaint the target frame name
@@ -353,6 +361,10 @@ def main(args):
 
                             overlaid_img_2[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = repeat_target_mouth_gray
                             overlaid_img_3[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = target_mouth_rgb
+                            
+                            if is_partial_data:
+                                overlaid_img_4[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = repeat_target_mouth_gray
+                                overlaid_img_5[target_mouth_v_min:target_mouth_v_max, target_mouth_u_min:target_mouth_u_max, :] = target_mouth_rgb
 
                             target_individual_save_path = os.path.join(target_save_path, target)
                             if not os.path.exists(target_individual_save_path): # Create a target individual folder if the folder does not exist
@@ -480,21 +492,38 @@ def main(args):
                             overlaid_img[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max, :] = repeat_top_mouth
                             mask[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 1
 
-                            overlaid_img_1[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = top_mouth_rgb
+                            if is_partial_data:
+                                mask_4[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 1
 
-                            overlaid_save_path = os.path.join(target_individual_save_path, 'overlaid.jpg')
-                            mask_save_path = os.path.join(target_individual_save_path, 'mask.npy')
-                            overlaid_save_path_1 = os.path.join(target_individual_save_path, 'overlaid_1.jpg')
-                            overlaid_save_path_2 = os.path.join(target_individual_save_path, 'overlaid_2.jpg')
-                            overlaid_save_path_3 = os.path.join(target_individual_save_path, 'overlaid_3.jpg')
+                            overlaid_img_1[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = top_mouth_rgb
                             
+                            ref_path = '/home/uss00067/Datasets/FDC/video_001/angry/level_1/024/000/ref_000.jpg'
+                            ref_img = cv2.imread(ref_path)
+                            ref_save_path = os.path.join(target_individual_save_path, 'ref_000.png')
+
+                            overlaid_save_path = os.path.join(target_individual_save_path, 'overlaid.png')
+                            mask_save_path = os.path.join(target_individual_save_path, 'mask.npy')
+                            overlaid_save_path_1 = os.path.join(target_individual_save_path, 'overlaid_1.png')
+                            overlaid_save_path_2 = os.path.join(target_individual_save_path, 'overlaid_2.png')
+                            overlaid_save_path_3 = os.path.join(target_individual_save_path, 'overlaid_3.png')
+                            
+                            if is_partial_data:
+                                overlaid_save_path_4 = os.path.join(target_individual_save_path, 'overlaid_4.jpeg')
+                                overlaid_save_path_5 = os.path.join(target_individual_save_path, 'overlaid_5.jpeg')
+                                mask_4_save_path = os.path.join(target_individual_save_path, 'mask_4.npy')
+
                             print('Save path: ', overlaid_save_path)
 
+                            cv2.imwrite(ref_save_path, ref_img)
                             cv2.imwrite(overlaid_save_path, overlaid_img)
                             np.save(mask_save_path, mask)
                             cv2.imwrite(overlaid_save_path_1, overlaid_img_1)
                             cv2.imwrite(overlaid_save_path_2, overlaid_img_2)
                             cv2.imwrite(overlaid_save_path_3, overlaid_img_3)
+                            if is_partial_data:
+                                cv2.imwrite(overlaid_save_path_4, overlaid_img_4)
+                                cv2.imwrite(overlaid_save_path_5, overlaid_img_5)
+                                np.save(mask_4_save_path, mask_4)
                             
                         print('Finish one ref frame')
                         input()
