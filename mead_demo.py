@@ -72,47 +72,66 @@ def detect_attributes(img, args):
     # Only return 2D landmarks
     return ver_lst[0]
 
+def recrop_img(img, scale_factor):
+    '''
+    input img: PIL image
+    '''    
+    full_size, _ = img.size
+    margin_size = int((full_size - scale_factor*full_size)*0.5)
+    far_end_size = int(full_size - margin_size)
+    recrop_size = (margin_size, margin_size, far_end_size, far_end_size)
+    cropped_img = img.crop(recrop_size)
+    new_size = (full_size, full_size)
+    new_img = cropped_img.resize(new_size, resample=Image.BILINEAR)
+
+    # Return a new numpy image rescaled
+    return np.asarray(new_img)
+
 def detect_face(img, landmark_raw):
     """
     Crop face area according to the detected landmarks
     """
-    # This size must ensure the face part is not missing, otherwise, the landmark detection will generate negative coordinates
-    # img_size = 1000 # Hyperparam 1000 for video_001
-    v_size = 700
-    u_size = 700
-    if is_debug:
-        print('In detect_face, shape of input img: ', img.shape)
+    # # This size must ensure the face part is not missing, otherwise, the landmark detection will generate negative coordinates
+    # # img_size = 1000 # Hyperparam 1000 for video_001
+    # v_size = 700
+    # u_size = 700
+    # if is_debug:
+    #     print('In detect_face, shape of input img: ', img.shape)
 
-    u_coords = landmark_raw[0,:]
-    v_coords = landmark_raw[1,:]
-    u_max = int(np.max(u_coords))
-    u_min = int(np.min(u_coords))
-    v_max = int(np.max(v_coords))
-    v_min = int(np.min(v_coords))
+    # u_coords = landmark_raw[0,:]
+    # v_coords = landmark_raw[1,:]
+    # u_max = int(np.max(u_coords))
+    # u_min = int(np.min(u_coords))
+    # v_max = int(np.max(v_coords))
+    # v_min = int(np.min(v_coords))
 
-    middle_u = int((u_max+u_min)/2)
-    middle_v = int((v_max+v_min)/2)
+    # middle_u = int((u_max+u_min)/2)
+    # middle_v = int((v_max+v_min)/2)
 
-    print('original image shape: ', img.shape)
+    # print('original image shape: ', img.shape)
 
-    new_v_min = middle_v - int(v_size/2)
-    new_v_max = new_v_min + v_size
-    assert new_v_max < img.shape[0], 'new_v_max exceeds the boundary'
+    # new_v_min = middle_v - int(v_size/2)
+    # new_v_max = new_v_min + v_size
+    # assert new_v_max < img.shape[0], 'new_v_max exceeds the boundary'
     
-    new_u_min = middle_u - int(u_size/2)
-    new_u_max = new_u_min + u_size
-    print(new_u_min, new_u_max)
-    assert new_u_max < img.shape[1], 'new_u_max exceeds the boundary'
+    # new_u_min = middle_u - int(u_size/2)
+    # new_u_max = new_u_min + u_size
+    # print(new_u_min, new_u_max)
+    # assert new_u_max < img.shape[1], 'new_u_max exceeds the boundary'
 
-    if new_u_max < 0 or new_u_min < 0 or new_v_max < 0 or new_v_min < 0:
-        print('Index: ', new_u_max, new_u_min, new_v_max, new_v_min)
-        raise RuntimeError('Index is negative!')
+    # if new_u_max < 0 or new_u_min < 0 or new_v_max < 0 or new_v_min < 0:
+    #     print('Index: ', new_u_max, new_u_min, new_v_max, new_v_min)
+    #     raise RuntimeError('Index is negative!')
 
-    new_img = img[new_v_min:new_v_max, new_u_min:new_u_max, :]
-    print('In detect_face, output shape: ', new_img.shape)
-    # input()
+    # new_img = img[new_v_min:new_v_max, new_u_min:new_u_max, :]
+    # print('In detect_face, output shape: ', new_img.shape)
+    # # input()
 
-    new_img = img[:,420:1500,:]
+    new_img = img[:,420:1500,:] # Crop the image to [1080, 1080]
+    scale_factor = 0.7
+    new_img = Image.fromarray(new_img) # Convert numpy image to PIL image
+    new_img = recrop_img(new_img, scale_factor)
+
     return new_img
     
 def split_face(landmark_raw):
@@ -198,7 +217,7 @@ def main(args):
     video_dir_list = ['video_001'] # Which video folder we are working on
 
     # How many target frames we want to capture for each ref frame
-    temporal_num = 3 # Hyperparam
+    temporal_num = 5 # Hyperparam
     
     # How many frames we skip when capturing the ref frames from the raw video
     # This has been decided by the frame image generation code
@@ -242,14 +261,15 @@ def main(args):
                         ref_img = cv2.imread(ref_frame_path)
                         ref_img_2d_landmarks = detect_attributes(ref_img, args) # 2D landmarks of the reference image
 
-                        if is_debug:
-                            print('ref_img_2d_landmarks: ', ref_img_2d_landmarks)
+                        if np.any(ref_img_2d_landmarks<0):
+                            print('ref image 2d landmarks: ', ref_img_2d_landmarks)
                         assert not np.any(ref_img_2d_landmarks<0), 'ref_img_2d_landmarks have negative values!'
+
                         new_ref_img = detect_face(ref_img, ref_img_2d_landmarks) # Newly generated reference image
                         new_ref_img_2d_landmarks = detect_attributes(new_ref_img, args)
 
-                        if is_debug:
-                            print('new_ref_img_2d_landmarks: ', new_ref_img_2d_landmarks)
+                        if np.any(new_ref_img_2d_landmarks<0):
+                            print('new_ref image 2d landmarks: ', new_ref_img_2d_landmarks)
                         assert not np.any(new_ref_img_2d_landmarks<0), 'new_ref_img_2d_landmarks have negative values!'
 
                         ref_split_data = split_face(new_ref_img_2d_landmarks)
@@ -285,7 +305,7 @@ def main(args):
                         overlaid_img_2 = deepcopy(new_ref_img)
                         overlaid_img_3 = deepcopy(new_ref_img)
 
-                        is_partial_data = True
+                        is_partial_data = False
                         if is_partial_data:
                             overlaid_img_4 = deepcopy(new_ref_img)
                             overlaid_img_5 = deepcopy(new_ref_img)
@@ -298,8 +318,9 @@ def main(args):
                             
                             target_gt_img = cv2.imread(target_frame_path) 
                             target_gt_img_2d_landmarks = detect_attributes(target_gt_img, args)
-                            if is_debug:
-                                print('target_gt_img_2d_landmarks: ', target_gt_img_2d_landmarks)
+                            
+                            if np.any(target_gt_img_2d_landmarks<0):
+                                print('target gt image 2d landmarks: ', target_gt_img_2d_landmarks)
                             assert not np.any(target_gt_img_2d_landmarks<0), 'target_gt_img_2d_landmarks have negative values!'
 
                             new_target_gt_img = detect_face(target_gt_img, target_gt_img_2d_landmarks) # Newly generated target gt image
@@ -380,15 +401,16 @@ def main(args):
                             left_target_frame_path = os.path.join(left_frame_dir, target_frame_str) # Target frame 
                             target_left_img = cv2.imread(left_target_frame_path) # Read by OpenCV
                             target_left_img_2d_landmarks = detect_attributes(target_left_img, args)
-                            if is_debug:
-                                print('target_left_img_2d_landmarks: ', target_left_img_2d_landmarks)
+                            
+                            if np.any(target_left_img_2d_landmarks<0):
+                                print('target left image 2d landmarks: ', target_left_img_2d_landmarks)
                             assert not np.any(target_left_img_2d_landmarks<0), 'target_left_img_2d_landmarks have negative values!'
 
                             new_target_left_img = detect_face(target_left_img, target_left_img_2d_landmarks) # Newly generated target left_image
                             new_left_2d_landmarks = detect_attributes(new_target_left_img, args)
 
-                            if is_debug:
-                                print('new_left_2d_landmarks: ', new_left_2d_landmarks)
+                            if np.any(new_left_2d_landmarks<0):
+                                print('Left 2d landmarks: ', new_left_2d_landmarks)
                             assert not np.any(new_left_2d_landmarks<0), 'new_left_2d_landmarks have negative values!'
 
                             new_target_left_img_gray = cv2.cvtColor(new_target_left_img, cv2.COLOR_RGB2GRAY)
@@ -424,16 +446,18 @@ def main(args):
                             right_target_frame_path = os.path.join(right_frame_dir, target_frame_str)
                             target_right_img = cv2.imread(right_target_frame_path)
                             target_right_img_2d_landmarks = detect_attributes(target_right_img, args)
-                            if is_debug:
-                                print('target_right_img_2d_landmarks: ', target_right_img_2d_landmarks)
+                            
+                            if np.any(target_right_img_2d_landmarks<0):
+                                print('target right image 2d landmarks: ', target_right_img_2d_landmarks)
                             assert not np.any(target_right_img_2d_landmarks<0), 'target_right_img_2d_landmarks have negative values!'
 
                             new_target_right_img = detect_face(target_right_img, target_right_img_2d_landmarks)
                             new_target_right_img_gray = cv2.cvtColor(new_target_right_img, cv2.COLOR_RGB2GRAY)
 
                             new_right_2d_landmarks = detect_attributes(new_target_right_img, args)
-                            if is_debug:
-                                print('new_right_2d_landmarks: ', new_right_2d_landmarks)
+                            
+                            if np.any(new_right_2d_landmarks<0):
+                                print('new right 2d landmarks: ', new_right_2d_landmarks)
                             assert not np.any(new_right_2d_landmarks<0), 'new_right_2d_landmarks have negative values!'
 
                             right_split_data = split_face(new_right_2d_landmarks)
@@ -463,16 +487,18 @@ def main(args):
                             top_target_frame_path = os.path.join(top_frame_dir, target_frame_str)
                             target_top_img = cv2.imread(top_target_frame_path)
                             target_top_img_2d_landmarks = detect_attributes(target_top_img, args)
-                            if is_debug:
-                                print('target_top_img_2d_landmarks: ', target_top_img_2d_landmarks)
+                            
+                            if np.any(target_top_img_2d_landmarks<0):
+                                print('target top image 2d landmarks: ', target_top_img_2d_landmarks)
                             assert not np.any(target_top_img_2d_landmarks<0), 'target_top_img_2d_landmarks have negative values!'
 
                             new_target_top_img = detect_face(target_top_img, target_top_img_2d_landmarks)
                             new_target_top_img_gray = cv2.cvtColor(new_target_top_img, cv2.COLOR_RGB2GRAY)
 
                             new_top_2d_landmarks = detect_attributes(new_target_top_img, args)
-                            if is_debug:
-                                print('new_top_2d_landmarks: ', new_top_2d_landmarks)
+                            
+                            if np.any(new_top_2d_landmarks<0):
+                                print('new top 2d landmarks: ', new_top_2d_landmarks)
                             assert not np.any(new_top_2d_landmarks<0), 'new_top_2d_landmarks have negative values!'
 
                             top_split_data = split_face(new_top_2d_landmarks) 
@@ -503,10 +529,18 @@ def main(args):
 
                             overlaid_save_path = os.path.join(target_individual_save_path, 'overlaid.png')
                             mask_save_path = os.path.join(target_individual_save_path, 'mask.npy')
-                            overlaid_save_path_1 = os.path.join(target_individual_save_path, 'overlaid_1.png')
-                            overlaid_save_path_2 = os.path.join(target_individual_save_path, 'overlaid_2.png')
-                            overlaid_save_path_3 = os.path.join(target_individual_save_path, 'overlaid_3.png')
+                            # overlaid_save_path_1 = os.path.join(target_individual_save_path, 'overlaid_1.png')
+                            # overlaid_save_path_2 = os.path.join(target_individual_save_path, 'overlaid_2.png')
+                            # overlaid_save_path_3 = os.path.join(target_individual_save_path, 'overlaid_3.png')
+
+                            left_patch_gray_angle_save_path = os.path.join(target_individual_save_path, 'left_patch_gray_angle.png')
+                            right_patch_gray_angle_save_path = os.path.join(target_individual_save_path, 'right_patch_gray_angle.png')
+                            mouth_patch_gray_angle_save_path = os.path.join(target_individual_save_path, 'mouth_patch_gray_angle.png')
                             
+                            left_patch_rgb_gt_save_path = os.path.join(target_individual_save_path, 'left_patch_rgb_gt.png')
+                            right_patch_rgb_gt_save_path = os.path.join(target_individual_save_path, 'right_patch_rgb_gt.png')
+                            mouth_patch_rgb_gt_save_path = os.path.join(target_individual_save_path, 'mouth_patch_rgb_gt.png')
+
                             if is_partial_data:
                                 overlaid_save_path_4 = os.path.join(target_individual_save_path, 'overlaid_4.jpeg')
                                 overlaid_save_path_5 = os.path.join(target_individual_save_path, 'overlaid_5.jpeg')
@@ -514,12 +548,26 @@ def main(args):
 
                             print('Save path: ', overlaid_save_path)
 
+                            # Save reference image
                             cv2.imwrite(ref_save_path, ref_img)
+
+                            # Save overlaid image
                             cv2.imwrite(overlaid_save_path, overlaid_img)
                             np.save(mask_save_path, mask)
-                            cv2.imwrite(overlaid_save_path_1, overlaid_img_1)
-                            cv2.imwrite(overlaid_save_path_2, overlaid_img_2)
-                            cv2.imwrite(overlaid_save_path_3, overlaid_img_3)
+                            # cv2.imwrite(overlaid_save_path_1, overlaid_img_1)
+                            # cv2.imwrite(overlaid_save_path_2, overlaid_img_2)
+                            # cv2.imwrite(overlaid_save_path_3, overlaid_img_3)
+
+                            # Save grayscale patches with angles
+                            cv2.imwrite(left_patch_gray_angle_save_path, repeat_left_left)
+                            cv2.imwrite(right_patch_gray_angle_save_path, repeat_right_right)
+                            cv2.imwrite(mouth_patch_gray_angle_save_path, repeat_top_mouth)
+
+                            # Save rgb gt patches
+                            cv2.imwrite(left_patch_rgb_gt_save_path, target_left_rgb)
+                            cv2.imwrite(right_patch_rgb_gt_save_path, target_right_rgb)
+                            cv2.imwrite(mouth_patch_rgb_gt_save_path, target_mouth_rgb)
+
                             if is_partial_data:
                                 cv2.imwrite(overlaid_save_path_4, overlaid_img_4)
                                 cv2.imwrite(overlaid_save_path_5, overlaid_img_5)
