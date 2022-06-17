@@ -128,9 +128,9 @@ def detect_face(img, landmark_raw):
     # # input()
 
     new_img = img[:,420:1500,:] # Crop the image to [1080, 1080]
-    scale_factor = 0.7
-    new_img = Image.fromarray(new_img) # Convert numpy image to PIL image
-    new_img = recrop_img(new_img, scale_factor)
+    # scale_factor = 0.7
+    # new_img = Image.fromarray(new_img) # Convert numpy image to PIL image
+    # new_img = recrop_img(new_img, scale_factor)
 
     return new_img
     
@@ -262,14 +262,18 @@ def main(args):
                         ref_img_2d_landmarks = detect_attributes(ref_img, args) # 2D landmarks of the reference image
 
                         if np.any(ref_img_2d_landmarks<0):
-                            print('ref image 2d landmarks: ', ref_img_2d_landmarks)
+                            # print('ref image 2d landmarks: ', ref_img_2d_landmarks)
+                            ref_img_2d_landmarks[ref_img_2d_landmarks<0] = 0
+
                         assert not np.any(ref_img_2d_landmarks<0), 'ref_img_2d_landmarks have negative values!'
 
                         new_ref_img = detect_face(ref_img, ref_img_2d_landmarks) # Newly generated reference image
                         new_ref_img_2d_landmarks = detect_attributes(new_ref_img, args)
 
                         if np.any(new_ref_img_2d_landmarks<0):
-                            print('new_ref image 2d landmarks: ', new_ref_img_2d_landmarks)
+                            # print('new_ref image 2d landmarks: ', new_ref_img_2d_landmarks)
+                            new_ref_img_2d_landmarks[new_ref_img_2d_landmarks<0] = 0
+
                         assert not np.any(new_ref_img_2d_landmarks<0), 'new_ref_img_2d_landmarks have negative values!'
 
                         ref_split_data = split_face(new_ref_img_2d_landmarks)
@@ -320,7 +324,9 @@ def main(args):
                             target_gt_img_2d_landmarks = detect_attributes(target_gt_img, args)
                             
                             if np.any(target_gt_img_2d_landmarks<0):
-                                print('target gt image 2d landmarks: ', target_gt_img_2d_landmarks)
+                                # print('target gt image 2d landmarks: ', target_gt_img_2d_landmarks)
+                                target_gt_img_2d_landmarks[target_gt_img_2d_landmarks<0] = 0
+
                             assert not np.any(target_gt_img_2d_landmarks<0), 'target_gt_img_2d_landmarks have negative values!'
 
                             new_target_gt_img = detect_face(target_gt_img, target_gt_img_2d_landmarks) # Newly generated target gt image
@@ -403,14 +409,18 @@ def main(args):
                             target_left_img_2d_landmarks = detect_attributes(target_left_img, args)
                             
                             if np.any(target_left_img_2d_landmarks<0):
-                                print('target left image 2d landmarks: ', target_left_img_2d_landmarks)
+                                # print('target left image 2d landmarks: ', target_left_img_2d_landmarks)
+                                target_left_img_2d_landmarks[target_left_img_2d_landmarks<0] = 0
+
                             assert not np.any(target_left_img_2d_landmarks<0), 'target_left_img_2d_landmarks have negative values!'
 
                             new_target_left_img = detect_face(target_left_img, target_left_img_2d_landmarks) # Newly generated target left_image
                             new_left_2d_landmarks = detect_attributes(new_target_left_img, args)
 
                             if np.any(new_left_2d_landmarks<0):
-                                print('Left 2d landmarks: ', new_left_2d_landmarks)
+                                # print('Left 2d landmarks: ', new_left_2d_landmarks)
+                                new_left_2d_landmarks[new_left_2d_landmarks<0] = 0
+
                             assert not np.any(new_left_2d_landmarks<0), 'new_left_2d_landmarks have negative values!'
 
                             new_target_left_img_gray = cv2.cvtColor(new_target_left_img, cv2.COLOR_RGB2GRAY)
@@ -448,7 +458,9 @@ def main(args):
                             target_right_img_2d_landmarks = detect_attributes(target_right_img, args)
                             
                             if np.any(target_right_img_2d_landmarks<0):
-                                print('target right image 2d landmarks: ', target_right_img_2d_landmarks)
+                                # print('target right image 2d landmarks: ', target_right_img_2d_landmarks)
+                                target_right_img_2d_landmarks[target_right_img_2d_landmarks<0] = 0
+
                             assert not np.any(target_right_img_2d_landmarks<0), 'target_right_img_2d_landmarks have negative values!'
 
                             new_target_right_img = detect_face(target_right_img, target_right_img_2d_landmarks)
@@ -457,7 +469,9 @@ def main(args):
                             new_right_2d_landmarks = detect_attributes(new_target_right_img, args)
                             
                             if np.any(new_right_2d_landmarks<0):
-                                print('new right 2d landmarks: ', new_right_2d_landmarks)
+                                # print('new right 2d landmarks: ', new_right_2d_landmarks)
+                                new_right_2d_landmarks[new_right_2d_landmarks<0] = 0
+
                             assert not np.any(new_right_2d_landmarks<0), 'new_right_2d_landmarks have negative values!'
 
                             right_split_data = split_face(new_right_2d_landmarks)
@@ -489,7 +503,9 @@ def main(args):
                             target_top_img_2d_landmarks = detect_attributes(target_top_img, args)
                             
                             if np.any(target_top_img_2d_landmarks<0):
-                                print('target top image 2d landmarks: ', target_top_img_2d_landmarks)
+                                # print('target top image 2d landmarks: ', target_top_img_2d_landmarks)
+                                target_top_img_2d_landmarks[target_top_img_2d_landmarks<0] = 0
+
                             assert not np.any(target_top_img_2d_landmarks<0), 'target_top_img_2d_landmarks have negative values!'
 
                             new_target_top_img = detect_face(target_top_img, target_top_img_2d_landmarks)
@@ -498,7 +514,9 @@ def main(args):
                             new_top_2d_landmarks = detect_attributes(new_target_top_img, args)
                             
                             if np.any(new_top_2d_landmarks<0):
-                                print('new top 2d landmarks: ', new_top_2d_landmarks)
+                                # print('new top 2d landmarks: ', new_top_2d_landmarks)
+                                new_top_2d_landmarks[new_top_2d_landmarks<0] = 0
+
                             assert not np.any(new_top_2d_landmarks<0), 'new_top_2d_landmarks have negative values!'
 
                             top_split_data = split_face(new_top_2d_landmarks) 
