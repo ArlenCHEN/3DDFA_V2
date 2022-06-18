@@ -2,24 +2,16 @@
 
 __author__ = 'cleardusk'
 
-
 import argparse
 import cv2
-
 import numpy as np
 from os import listdir
 from os.path import isfile, join
 import os
 from copy import deepcopy
-
 from utils.tddfa_util import str2bool
-
 from tqdm import tqdm
-
-
 from fdc_utils import *
-
-
 
 def main(args):
     # train_video_dir_list = ['video_011', 'video_014', 'video_049']
@@ -241,7 +233,7 @@ def main(args):
                                         print('Creating target individual folders...')
                                         os.makedirs(target_individual_save_path)
 
-                                    target_gt_save_path = os.path.join(target_individual_save_path, target_frame_str)
+                                    target_gt_save_path = os.path.join(target_individual_save_path, 'gt.png')
                                     cv2.imwrite(target_gt_save_path, new_target_gt_img)
 
                                     # Extract left target image
@@ -372,7 +364,7 @@ def main(args):
 
                                     overlaid_img_1[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = top_mouth_rgb
                                     
-                                    ref_save_path = os.path.join(target_individual_save_path, ref_frame) # Save new ref image in the new place
+                                    ref_save_path = os.path.join(target_individual_save_path, 'reference.png') # Save new ref image in the new place
                                     # ref_path = '/home/uss00067/Datasets/FDC/video_001/angry/level_1/024/000/ref_000.jpg'
                                     # ref_img = cv2.imread(ref_path)
                                     # ref_save_path = os.path.join(target_individual_save_path, 'ref_000.png')
