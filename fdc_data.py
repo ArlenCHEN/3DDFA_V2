@@ -318,7 +318,7 @@ def main(args):
                                     repeat_right_right = np.repeat(right_right[:,:,np.newaxis], 3, axis=2)
                                     # Replace the right eye
                                     overlaid_img[right_v_min:right_v_max, right_u_min:right_u_max, :] = repeat_right_right
-                                    mask[right_v_min:right_v_max, right_u_min:right_u_max] = 1
+                                    mask[right_v_min:right_v_max, right_u_min:right_u_max] = 2
 
                                     overlaid_img_1[right_v_min:right_v_max, right_u_min:right_u_max, :] = right_right_rgb
 
@@ -357,7 +357,7 @@ def main(args):
 
                                     # Replace the mouth
                                     overlaid_img[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max, :] = repeat_top_mouth
-                                    mask[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 1
+                                    mask[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 3
 
                                     if is_partial_data:
                                         mask_4[mouth_v_min:mouth_v_max, mouth_u_min:mouth_u_max] = 1
