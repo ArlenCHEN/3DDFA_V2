@@ -15,21 +15,23 @@ from fdc_utils import *
 
 def main(args):
     # train_video_dir_list = ['video_011', 'video_014', 'video_049']
-    train_video_dir_list = ['video_011']
-    val_video_dir_list = ['video_018']
-    test_video_dir_list = ['video_018']
+    # train_video_dir_list = ['video_011']
+    # val_video_dir_list = ['video_018']
+    # test_video_dir_list = ['video_018']
+
+    video_list = ['video_001', 'video_002', 'video_003', 'video_004', 'video_006', 'video_009', 'video_010', 'video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
 
     # How many target frames we want to capture for each ref frame
     temporal_num = 1 # Hyperparam
     
     # How many frames we skip when capturing the ref frames from the raw video
     # This has been decided by the frame image generation code
-    frame_interval = 5 
+    frame_interval = 1
 
     img_suffix = '.jpg'
     suffix_len = len(img_suffix)
 
-    data_type = ['train', 'val', 'test']
+    data_type = ['train', 'val', 'weak_test', 'strong_test']
 
     # angle_list = ['front', 'left_60', 'right_60', 'top']
     expression_list = ['angry', 'contempt', 'disgusted', 'fear', 'happy', 'neutral', 'sad', 'surprised']  

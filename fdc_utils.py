@@ -45,20 +45,20 @@ def detect_attributes(img, args):
     n = len(boxes)
     if n == 0:
         print(f'No face detected, exit')
-        sys.exit(-1)
+        return None
+    else:
+        param_lst, roi_box_lst = tddfa(img, boxes)
 
-    param_lst, roi_box_lst = tddfa(img, boxes)
+        # Visualization and serialization
+        dense_flag = args.opt in ('2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'ply', 'obj')
+        
+        ver_lst = tddfa.recon_vers(param_lst, roi_box_lst, dense_flag=dense_flag)
 
-    # Visualization and serialization
-    dense_flag = args.opt in ('2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'ply', 'obj')
-    
-    ver_lst = tddfa.recon_vers(param_lst, roi_box_lst, dense_flag=dense_flag)
+        if is_debug:
+            print('ver_lst: ', ver_lst)
 
-    if is_debug:
-        print('ver_lst: ', ver_lst)
-
-    # Only return 2D landmarks
-    return ver_lst[0]
+        # Only return 2D landmarks
+        return ver_lst[0]
 
 def recrop_img(img, scale_factor):
     '''
@@ -82,18 +82,18 @@ def detect_face(img, landmark_raw):
     # # This size must ensure the face part is not missing, otherwise, the landmark detection will generate negative coordinates
     # # img_size = 1000 # Hyperparam 1000 for video_001
     # v_size = 700
-    # u_size = 700
+    u_size = 1080
     # if is_debug:
     #     print('In detect_face, shape of input img: ', img.shape)
 
-    # u_coords = landmark_raw[0,:]
+    u_coords = landmark_raw[0,:]
     # v_coords = landmark_raw[1,:]
-    # u_max = int(np.max(u_coords))
-    # u_min = int(np.min(u_coords))
+    u_max = int(np.max(u_coords))
+    u_min = int(np.min(u_coords))
     # v_max = int(np.max(v_coords))
     # v_min = int(np.min(v_coords))
 
-    # middle_u = int((u_max+u_min)/2)
+    middle_u = int((u_max+u_min)/2)
     # middle_v = int((v_max+v_min)/2)
 
     # print('original image shape: ', img.shape)
@@ -102,8 +102,15 @@ def detect_face(img, landmark_raw):
     # new_v_max = new_v_min + v_size
     # assert new_v_max < img.shape[0], 'new_v_max exceeds the boundary'
     
-    # new_u_min = middle_u - int(u_size/2)
-    # new_u_max = new_u_min + u_size
+    new_u_min = middle_u - int(u_size/2)
+    new_u_max = new_u_min + u_size
+
+    if new_u_min < 0:
+        new_u_min = 0
+
+    if new_u_max > img.shape[1]:
+        new_u_max = img.shape[1]
+
     # print(new_u_min, new_u_max)
     # assert new_u_max < img.shape[1], 'new_u_max exceeds the boundary'
 
@@ -115,7 +122,7 @@ def detect_face(img, landmark_raw):
     # print('In detect_face, output shape: ', new_img.shape)
     # # input()
 
-    new_img = img[:,420:1500,:] # Crop the image to [1080, 1080]
+    new_img = img[:,new_u_min:new_u_max,:] # Crop the image to [1080, 1080]
     # scale_factor = 0.7
     # new_img = Image.fromarray(new_img) # Convert numpy image to PIL image
     # new_img = recrop_img(new_img, scale_factor)
@@ -200,3 +207,37 @@ def split_face(landmark_raw):
         'mouth_coords':mouth_coords
     }
     return split_data
+
+def decide_mode(video_dir, exp):
+    if video_dir == 'video_001':
+        if exp == 'contempt':
+            return 'weak_test'
+        else:
+            return 'train'
+    elif video_dir == 'video_002':
+        if exp == 'sad':
+            return 'val'
+        else:
+            return 'train'
+    elif video_dir == 'video_003':
+        if exp == 'surprised':
+            return 'val'
+        else:
+            return 'train'
+    elif video_dir == 'video_013':
+        if exp == 'happy':
+            return 'strong_test'
+        else:
+            return None
+    elif video_dir == 'video_018':
+        if exp == 'disgusted':
+            return 'strong_test'
+        else:
+            return None
+    elif video_dir == 'video_021':
+        if exp == 'fear':
+            return 'weak_test'
+        else:
+            return 'train'
+    else:
+        return 'train'
