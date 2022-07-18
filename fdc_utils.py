@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 import yaml
 import sys
@@ -12,12 +13,13 @@ from utils.uv import uv_tex
 from utils.pose import viz_pose, viz_pose_1
 from utils.serialization import ser_to_ply, ser_to_obj
 from utils.functions import draw_landmarks, get_suffix
+from utils.pose import viz_pose, viz_pose_1
 
 from PIL import Image
 
 is_debug = False
 
-def detect_attributes(img, args):
+def detect_attributes(img, args, is_pose=False):
     """
     Detect facial attributes of the given images, including 2/3D landmarks, head pose, depth, etc
     See this for more details: https://github.com/cleardusk/3DDFA_V2
@@ -53,12 +55,19 @@ def detect_attributes(img, args):
         dense_flag = args.opt in ('2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'ply', 'obj')
         
         ver_lst = tddfa.recon_vers(param_lst, roi_box_lst, dense_flag=dense_flag)
+        if is_pose:
+            pose = viz_pose_1(param_lst, ver_lst)
+            yaw = pose[0]
+            pitch = pose[1]
+            roll = pose[2]
 
         if is_debug:
             print('ver_lst: ', ver_lst)
 
-        # Only return 2D landmarks
-        return ver_lst[0]
+        if is_pose:
+            return ver_lst[0], yaw, pitch, roll
+        else:
+            return ver_lst[0]
 
 def recrop_img(img, scale_factor):
     '''
@@ -82,34 +91,51 @@ def detect_face(img, landmark_raw):
     # # This size must ensure the face part is not missing, otherwise, the landmark detection will generate negative coordinates
     # # img_size = 1000 # Hyperparam 1000 for video_001
     # v_size = 700
-    u_size = 1080
+    # u_size = 1080
+
     # if is_debug:
     #     print('In detect_face, shape of input img: ', img.shape)
 
     u_coords = landmark_raw[0,:]
-    # v_coords = landmark_raw[1,:]
+    v_coords = landmark_raw[1,:]
     u_max = int(np.max(u_coords))
     u_min = int(np.min(u_coords))
-    # v_max = int(np.max(v_coords))
-    # v_min = int(np.min(v_coords))
+    v_max = int(np.max(v_coords))
+    v_min = int(np.min(v_coords))
+
+    v_min = v_min - 350
+    v_max = v_max + 10
+    u_min = u_min - 50
+    u_max = u_max + 50
+
+    u_range = u_max - u_min
+    v_range = v_max - v_min
+
+    # Use the larger range as the image size
+    if u_range > v_range:
+        img_size = u_range
+    else:
+        img_size = v_range
 
     middle_u = int((u_max+u_min)/2)
-    # middle_v = int((v_max+v_min)/2)
-
-    # print('original image shape: ', img.shape)
-
-    # new_v_min = middle_v - int(v_size/2)
-    # new_v_max = new_v_min + v_size
-    # assert new_v_max < img.shape[0], 'new_v_max exceeds the boundary'
-    
-    new_u_min = middle_u - int(u_size/2)
-    new_u_max = new_u_min + u_size
+    middle_v = int((v_max+v_min)/2)
+     
+    new_u_min = middle_u - int(img_size/2)
+    new_u_max = new_u_min + img_size
+    new_v_min = middle_v - int(img_size/2)
+    new_v_max = new_v_min + img_size
 
     if new_u_min < 0:
         new_u_min = 0
 
+    if new_v_min < 0:
+        new_v_min = 0
+
     if new_u_max > img.shape[1]:
         new_u_max = img.shape[1]
+
+    if new_v_max > img.shape[0]:
+        new_v_max = img.shape[0]
 
     # print(new_u_min, new_u_max)
     # assert new_u_max < img.shape[1], 'new_u_max exceeds the boundary'
@@ -117,17 +143,38 @@ def detect_face(img, landmark_raw):
     # if new_u_max < 0 or new_u_min < 0 or new_v_max < 0 or new_v_min < 0:
     #     print('Index: ', new_u_max, new_u_min, new_v_max, new_v_min)
     #     raise RuntimeError('Index is negative!')
-
-    # new_img = img[new_v_min:new_v_max, new_u_min:new_u_max, :]
-    # print('In detect_face, output shape: ', new_img.shape)
+    
+    new_img = img[new_v_min:new_v_max, new_u_min:new_u_max, :]
     # # input()
 
-    new_img = img[:,new_u_min:new_u_max,:] # Crop the image to [1080, 1080]
+    # new_img = img[:,new_u_min:new_u_max,:] # Crop the image to [1080, 1080]
+
     # scale_factor = 0.7
     # new_img = Image.fromarray(new_img) # Convert numpy image to PIL image
     # new_img = recrop_img(new_img, scale_factor)
 
     return new_img
+
+def normalize_coords(coords_array):
+    # Normalization according to the first coords (first row)
+    base_u = coords_array[0][0]
+    base_v = coords_array[0][1]
+
+    coords_array[:, 0] -= base_u
+    coords_array[:, 1] -= base_v
+
+    u_min = np.min(coords_array[:, 0])
+    u_max = np.max(coords_array[:, 0])
+    v_min = np.min(coords_array[:, 1])
+    v_max = np.max(coords_array[:, 1])
+
+    u_range = u_max - u_min
+    v_range = v_max - v_min
+
+    coords_array[:, 0]/=(u_range+1e-12)
+    coords_array[:, 1]/=(v_range+1e-12)
+
+    return coords_array
     
 def split_face(landmark_raw):
     """
@@ -153,6 +200,21 @@ def split_face(landmark_raw):
     mouth = np.hstack((landmark_raw[0, 48:68][:, np.newaxis], landmark_raw[1, 48:68][:, np.newaxis]))
     if is_debug:
         print('Mouth: ', mouth)
+
+    normalized_left_eyebrow = deepcopy(left_eyebrow)
+    normalized_left_eyebrow = normalize_coords(normalized_left_eyebrow)
+
+    normalized_left_eye = deepcopy(left_eye)
+    normalized_left_eye = normalize_coords(normalized_left_eye)
+
+    normalized_right_eyebrow = deepcopy(right_eyebrow)
+    normalized_right_eyebrow = normalize_coords(normalized_right_eyebrow)
+
+    normalized_right_eye = deepcopy(right_eye)
+    normalized_right_eye = normalize_coords(normalized_right_eye)
+
+    normalized_mouth = deepcopy(mouth)
+    normalized_mouth = normalize_coords(normalized_mouth)
 
     left = np.vstack((left_eyebrow, left_eye))
     if is_debug:
@@ -204,7 +266,12 @@ def split_face(landmark_raw):
     split_data = {
         'left_coords':left_coords,
         'right_coords':right_coords,
-        'mouth_coords':mouth_coords
+        'mouth_coords':mouth_coords,
+        'normalized_left_eyebrow':normalized_left_eyebrow,
+        'normalized_left_eye':normalized_left_eye,
+        'normalized_right_eyebrow':normalized_right_eyebrow,
+        'normalized_right_eye':normalized_right_eye,
+        'normalized_mouth':normalized_mouth
     }
     return split_data
 

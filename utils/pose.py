@@ -142,10 +142,10 @@ def viz_pose(img, param_lst, ver_lst, show_flag=False, wfp=None):
 
     return img
 
-def viz_pose_1(img, param_lst, ver_lst, show_flag=False, wfp=None):
+def viz_pose_1(param_lst, ver_lst, show_flag=False, wfp=None):
     for param, ver in zip(param_lst, ver_lst):
         P, pose = calc_pose(param)
         # print(P[:, :3])
-        print(f'yaw: {pose[0]:.1f}, pitch: {pose[1]:.1f}, roll: {pose[2]:.1f}')
+        # print(f'yaw: {pose[0]:.1f}, pitch: {pose[1]:.1f}, roll: {pose[2]:.1f}')
 
-    return P, pose
+    return pose
