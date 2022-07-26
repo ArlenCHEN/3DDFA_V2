@@ -74,12 +74,13 @@ def main(args):
                     for clip in video_clip_list:
                         frame_save_dir = os.path.join(frame_save_parent, clip)
                         frame_dir = os.path.join(video_path_parent, clip)
-
-                        #randint(a, b) returns an integer in the range [a, b], instead of [a, b-1]
                         
-                        sample_num = random.randint(0, ref_video_clip_len-1)
+                        # Sample video clip from the ref video folder
+                        sample_num = random.randint(0, ref_video_clip_len-1) #randint(a, b) returns an integer in the range [a, b], instead of [a, b-1] 
                         sampled_clip = ref_video_clip_list[sample_num]
                         ref_dir = os.path.join(ref_path_parent, sampled_clip)
+                        ref_frames = [f for f in listdir(ref_dir) if isfile(join(ref_dir, f))]
+                        ref_frames_len = len(ref_frames)
 
                         frames = [f for f in listdir(frame_dir) if isfile(join(frame_dir, f))] # Read files , not folders
                         frames.sort() # Sort the frames according to the frame number such that the frame in for loop can be extracted in order
@@ -99,8 +100,10 @@ def main(args):
                                             if i < 4:
                                                 continue
 
-                            # ref_frame_path = os.path.join(frame_dir, frame) # Reference image
-                            ref_frame_path = os.path.join(ref_dir, frame)
+                            # Sample frame from the ref video clip folder
+                            ref_sample_num = random.randint(0, ref_frames_len-1)
+                            ref_sampled_frame = ref_frames[ref_sample_num]
+                            ref_frame_path = os.path.join(ref_dir, ref_sampled_frame)
                             ref_img = cv2.imread(ref_frame_path)
                             ref_img_2d_landmarks = detect_attributes(ref_img, args) # 2D landmarks of the reference image
 
@@ -225,7 +228,7 @@ def main(args):
                                 # repeat_target_right_gray = np.repeat(target_right_gray[:,:,np.newaxis], 3, axis=2)
 
                                 # Extract the mouth part of the target gt image
-                                target_mouth_rgb = new_target_gt_img[target_gt_mouth_coords[1]-delta:target_gt_mouth_coords[0]+delta, target_gt_mouth_coords[3]-delta:target_gt_mouth_coords[2]+delta]
+                                target_mouth_rgb = new_target_gt_img[target_gt_mouth_coords[1]-int(2*delta):target_gt_mouth_coords[0]+int(4.3*delta), target_gt_mouth_coords[3]-int(3.5*delta):target_gt_mouth_coords[2]+int(3.5*delta)]
                                 # target_mouth_gray = new_target_gt_img_gray[target_gt_mouth_coords[1]-delta:target_gt_mouth_coords[0]+delta, target_gt_mouth_coords[3]-delta:target_gt_mouth_coords[2]+delta]
 
                                 # target_mouth_v_range = target_mouth_rgb.shape[0]
@@ -326,10 +329,13 @@ def main(args):
                                 target_mouth_rgb_img = Image.fromarray(target_mouth_rgb)
                                 
                                 # Enlarge the mouth area from the orignal one
-                                ref_mouth_u_min = ref_mouth_u_min - 5*delta
-                                ref_mouth_u_max = ref_mouth_u_max + 5*delta
-                                ref_mouth_v_min = ref_mouth_v_min - 3*delta
-                                ref_mouth_v_max = ref_mouth_v_max + 3*delta
+                                # The mouth patch is extacted from the raw top image
+                                # While the ref image is cropped
+                                # So there should be a linear transformation to fit the mouth patch into the ref mask
+                                ref_mouth_u_min = int(ref_mouth_u_min - 4.5*delta)
+                                ref_mouth_u_max = int(ref_mouth_u_max + 4.3*delta)
+                                ref_mouth_v_min = int(ref_mouth_v_min - 2.5*delta)
+                                ref_mouth_v_max = int(ref_mouth_v_max + 3.5*delta)
 
                                 ref_mouth_u_range = ref_mouth_u_max - ref_mouth_u_min
                                 ref_mouth_v_range = ref_mouth_v_max - ref_mouth_v_min
@@ -348,7 +354,11 @@ def main(args):
                                 # # 111
                                 # overlaid_img[ref_mouth_v_min-delta:ref_mouth_v_max+delta, ref_mouth_u_min-delta:ref_mouth_u_max+delta, :] = repeat_top_mouth
 
-                                overlaid_img[ref_mouth_v_min:ref_mouth_v_max, ref_mouth_u_min:ref_mouth_u_max, :] = repeat_top_mouth
+                                # TODO: identify the problem: ValueError: could not broadcast input array from shape (297,444,3) into shape (296,444,3)
+                                try:
+                                    overlaid_img[ref_mouth_v_min:ref_mouth_v_max, ref_mouth_u_min:ref_mouth_u_max, :] = repeat_top_mouth
+                                except:
+                                    continue
                                 
                                 # # 111
                                 # mask[ref_mouth_v_min-delta:ref_mouth_v_max+delta, ref_mouth_u_min-delta:ref_mouth_u_max+delta] = 3
@@ -413,8 +423,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='The demo of still image of 3DDFA_V2')
     parser.add_argument('-c', '--config', type=str, default='configs/mb1_120x120.yml')
     parser.add_argument('-f', '--img_fp', type=str, default='examples/inputs/trump_hillary.jpg')
-    parser.add_argument('-r', '--video_root_path', type=str, default='/home/uss00067/Datasets/New_frames')
-    parser.add_argument('-s', '--video_save_path', type=str, default='/home/uss00067/Datasets/FDC_4')
+    parser.add_argument('-r', '--video_root_path', type=str, default='/home/uss00067/Datasets/New_frames_1')
+    parser.add_argument('-s', '--video_save_path', type=str, default='/home/uss00067/Datasets/FDC_6')
     parser.add_argument('-m', '--mode', type=str, default='cpu', help='gpu or cpu mode')
     parser.add_argument('-o', '--opt', type=str, default='2d_sparse',
                         choices=['2d_sparse', '2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'pose', 'ply', 'obj'])
