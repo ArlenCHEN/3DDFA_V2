@@ -424,7 +424,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', type=str, default='configs/mb1_120x120.yml')
     parser.add_argument('-f', '--img_fp', type=str, default='examples/inputs/trump_hillary.jpg')
     parser.add_argument('-r', '--video_root_path', type=str, default='/home/uss00067/Datasets/New_frames_1')
-    parser.add_argument('-s', '--video_save_path', type=str, default='/home/uss00067/Datasets/FDC_6')
+    parser.add_argument('-s', '--video_save_path', type=str, default='/home/uss00067/Datasets/FDC_7')
     parser.add_argument('-m', '--mode', type=str, default='cpu', help='gpu or cpu mode')
     parser.add_argument('-o', '--opt', type=str, default='2d_sparse',
                         choices=['2d_sparse', '2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'pose', 'ply', 'obj'])
