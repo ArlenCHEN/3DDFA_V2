@@ -47,7 +47,10 @@ def detect_attributes(img, args, is_pose=False):
     n = len(boxes)
     if n == 0:
         print(f'No face detected, exit')
-        return None
+        if is_pose:
+            return None, None, None, None
+        else:
+            return None
     else:
         param_lst, roi_box_lst = tddfa(img, boxes)
 
