@@ -16,7 +16,8 @@ from PIL import Image
 import random
 
 def main(args):
-    video_list = ['video_001', 'video_002', 'video_003', 'video_004', 'video_006', 'video_009', 'video_010', 'video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
+    # video_list = ['video_001', 'video_002', 'video_003', 'video_004', 'video_006', 'video_009', 'video_010', 'video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
+    video_list = ['video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
 
     # How many target frames we want to capture for each ref frame
     temporal_num = 1 # Hyperparam
@@ -432,7 +433,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', type=str, default='configs/mb1_120x120.yml')
     parser.add_argument('-f', '--img_fp', type=str, default='examples/inputs/trump_hillary.jpg')
     parser.add_argument('-r', '--video_root_path', type=str, default='/home/uss00067/Datasets/New_frames_1')
-    parser.add_argument('-s', '--video_save_path', type=str, default='/home/uss00067/Datasets/FDC_9')
+    parser.add_argument('-s', '--video_save_path', type=str, default='/nfs/STG/Audio2FacePose/MEAD/FDC_9')
     parser.add_argument('-m', '--mode', type=str, default='cpu', help='gpu or cpu mode')
     parser.add_argument('-o', '--opt', type=str, default='2d_sparse',
                         choices=['2d_sparse', '2d_dense', '3d', 'depth', 'pncc', 'uv_tex', 'pose', 'ply', 'obj'])
