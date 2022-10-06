@@ -16,9 +16,9 @@ from PIL import Image
 import random
 
 def main(args):
-    # video_list = ['video_001', 'video_002', 'video_003', 'video_004', 'video_006', 'video_009', 'video_010', 'video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
-    video_list = ['video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
-
+    # Video input list
+    video_list = ['video_001', 'video_002', 'video_003', 'video_004', 'video_006', 'video_009', 'video_010', 'video_011', 'video_013', 'video_014', 'video_018', 'video_021', 'video_023', 'video_049']
+    
     # How many target frames we want to capture for each ref frame
     temporal_num = 1 # Hyperparam
     
